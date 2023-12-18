@@ -1,0 +1,194 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url = env("DATABASE_URL")
+  relationMode = "prisma"
+}
+
+model User {
+  id         String       @id @default(cuid())
+  email      String       @unique
+  username   String
+  role       String     @default("USER")
+  firstName  String?
+  lastName   String?
+  imageUrl   String?
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  tokenBalance   Int      @default(0)
+  tokenFromSales Int      @default(0)
+  userConfig UserConfig[]
+  contents   Content[]
+  prompts    Prompt[]
+  favorites Favorite[]
+  promptRating RatingPrompt[]
+  promptUsage PromptUsage[]
+}
+
+model UserConfig {
+  id         String @id @default(cuid())
+  userId     String
+  name       String @unique
+  brandVoice String @db.VarChar(15000)
+  user       User   @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model PromptUsage {
+  id            String   @id @default(cuid())
+  type          String
+  userId        String
+  promptId      String
+  usedAt        DateTime @default(now())
+  usageCost     Int
+  tokenToSeller Int
+  commission    Int
+  salesPrice    Int
+  user          User     @relation(fields: [userId], references: [id])
+  prompt        Prompt   @relation(fields: [promptId], references: [id])
+
+  @@index([userId])
+  @@index([promptId])
+}
+
+model RatingPrompt {
+  id        String  @id @default(cuid())
+  userId    String
+  promptId  String 
+  rating    RatingType?
+  user      User     @relation(fields: [userId], references: [id])
+  prompt    Prompt   @relation(fields: [promptId], references: [id])
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, promptId])
+  @@index([promptId])
+
+}
+
+enum RatingType {
+  positive
+  negative
+}
+
+
+model UserSubscription {
+  id                     String   @id @default(cuid())
+  userId                 String   @unique
+  productName            String?
+  stripeCustomerId       String?  @unique @map(name: "stipe_custumer_id")
+  stripeSubscriptionId   String?  @unique @map(name: "stripe_subscription_id")
+  stripePriceId          String?  @map(name: "stripe_price_id")
+  stripeCurrentPeriodEnd DateTime @map(name: "stripe_current_period_end")
+}
+
+model Content {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String
+  promptId  String
+  user      User     @relation(fields: [userId], references: [id])
+  prompt    Prompt   @relation(fields: [promptId], references: [id])
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([promptId])
+}
+
+
+model Prompt {
+  id          String     @id @default(cuid())
+  userId      String
+  type        String
+  model       String
+  isModerated  Boolean @default(false)
+  title       String     
+  description String     @db.Text
+  usageCount  Int?        @default(0)
+  promptContent   String     @db.Text
+  imageIdThumbnail  String?
+  categoryId  String?
+  subCategoryId String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  salesPrice  String? 
+  sellerPromptPriceId   String
+  outputExample   String? @db.Text
+  sellerPromptPrice     SellerPromptPrice?   @relation(fields: [sellerPromptPriceId], references: [id])
+  category    Category?   @relation(fields: [categoryId], references: [id])
+  subCategory   SubCategory? @relation(fields: [subCategoryId], references: [id])
+  variables   Variable[]
+  images      Image[]
+  favorites Favorite[]
+  promptRating RatingPrompt[]
+  promptUsage PromptUsage[]
+  user        User       @relation(fields: [userId], references: [id])
+
+  @@index([sellerPromptPriceId])
+  @@index([subCategoryId])
+  @@index([categoryId])
+  @@index([userId])
+}
+
+model SellerPromptPrice {
+  id       String   @id @default(cuid())
+  content  String   
+  prompts  Prompt[]
+}
+
+model Category {
+  id       String   @id @default(cuid())
+  name     String   
+  color    String
+  subCategories  SubCategory[]
+  prompts  Prompt[]
+}
+
+model Image {
+  id          String    @id @default(cuid())
+  imageId     String
+  promptId    String
+  prompt      Prompt    @relation(fields: [promptId], references: [id])
+
+  @@index([promptId])
+}
+
+model SubCategory {
+  id          String   @id @default(cuid())
+  name        String
+  categoryId  String
+  category    Category @relation(fields: [categoryId], references: [id])
+  prompts     Prompt[]
+  
+  @@index([categoryId])
+}
+
+
+model Variable {
+  id          String   @id @default(cuid())
+  type        String
+  name        String
+  label       String
+  placeholder String?
+  inputExample String?
+  options     Json?
+  promptId    String
+  prompt      Prompt   @relation(fields: [promptId], references: [id])
+  
+  @@index([promptId])
+}
